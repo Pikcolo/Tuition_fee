@@ -36,8 +36,8 @@ for item in data:
         results.append({
             "University": item.get("university_name_th", ""),
             "Campus": item.get("campus_name_th", ""),
-            "Faculty (TH)": item.get("field_name_th", ""),
-            "Program (TH)": item.get("program_name_th", ""),
+            "Faculty": item.get("field_name_th", ""),
+            "Program": item.get("program_name_th", ""),
             "Tuition Fee": cost_info,
         })
 
