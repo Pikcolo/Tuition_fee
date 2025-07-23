@@ -1,69 +1,156 @@
 import pandas as pd
 import plotly.express as px
 import dash
-from dash import Dash, dcc, html
+from dash import Dash, dcc, html, dash_table
 from dash.dependencies import Input, Output, State, ALL
 import math
-
 
 # โหลดข้อมูล
 df = pd.read_excel("data/cleaned_tuition_data.xlsx")
 
-# กรองเฉพาะสาขาคอมพิวเตอร์และเอไอ
+# กรองเฉพาะสาขาวิศวกรรมคอมพิวเตอร์, ปัญญาประดิษฐ์, หุ่นยนต์
 df = df[df['Faculty'].str.contains("วิศวกรรมคอมพิวเตอร์|วิศวกรรมปัญญาประดิษฐ์|วิศวกรรมหุ่นยนต์", na=False)]
 
-# แปลงคอลัมน์เป็นตัวเลข และคัดข้อมูลที่มีค่าเทอม
-df['Cleaned Tuition Fee'] = pd.to_numeric(df['Cleaned Tuition Fee'], errors='coerce')
-df = df[df['Cleaned Tuition Fee'] > 0]
+# แปลงเป็นตัวเลขและกรองข้อมูลที่มีค่าเทอม > 0
+df['Confirm Tution Fee'] = pd.to_numeric(df['Confirm Tution Fee'], errors='coerce')
+df = df[df['Confirm Tution Fee'] > 0]
 
 app = Dash(__name__)
-app.title = "MyTCAS Dashboard - ค่าเทอมวิศวกรรมคอมพิวเตอร์และวิศวกรรมปัญญาประดิษฐ์"
+app.title = "MyTCAS Tuition Dashboard"
 
-unique_univs = sorted(df['University'].dropna().unique())
 per_page = 5
-total_pages = math.ceil(len(unique_univs) / per_page)
-max_page_display = 5
-max_page = min(total_pages, max_page_display)
 
 app.layout = html.Div([
     html.H1(
-        "📊 MyTCAS Dashboard: ค่าเทอมวิศวกรรมคอมพิวเตอร์และวิศวกรรมปัญญาประดิษฐ์",
-        style={"textAlign": "center"}
+        "📊 MyTCAS Dashboard: ค่าเล่าเรียนวิศวกรรมคอมพิวเตอร์และ AI",
+        style={
+            "textAlign": "center",
+            "fontFamily": "Kanit, sans-serif",
+            "color": "#003366",
+            "marginTop": "20px",
+            "marginBottom": "30px",
+            "fontWeight": "700",
+            "fontSize": "2.5rem",
+        }
     ),
 
-    html.Div([
-        html.Label("เลือกประเภทค่าใช้จ่าย:"),
-        dcc.Dropdown(
-            id='tuition-category-dropdown',
-            options=[
-                {"label": "ค่าเทอม (ต่อภาค)", "value": "ค่าเทอม"},
-                {"label": "ค่าเรียนตลอดหลักสูตร", "value": "ค่าเรียนตลอดหลักสูตร"}
-            ],
-            value="ค่าเทอม",
-            clearable=False
-        ),
-    ], style={"width": "300px", "margin": "auto", "marginBottom": "20px"}),
+    dcc.Tabs(id='tabs', value='tab-graph', children=[
+        dcc.Tab(label='กราฟเปรียบเทียบค่าเทอม', value='tab-graph', children=[
+            # ตัวกรอง dropdown
+            html.Div([
+                html.Div([
+                    html.Label("เลือกประเภทค่าใช้จ่าย:", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
+                    dcc.Dropdown(
+                        id='tuition-category-dropdown',
+                        options=[
+                            {"label": "ค่าเทอม (ต่อภาค)", "value": "ค่าเทอม"},
+                            {"label": "ค่าเรียนตลอดหลักสูตร", "value": "ค่าเรียนตลอดหลักสูตร"}
+                        ],
+                        value="ค่าเทอม",
+                        clearable=False,
+                        style={"width": "280px", "borderRadius": "8px"}
+                    ),
+                ], style={"flex": "1", "minWidth": "280px", "marginRight": "20px"}),
 
-    html.Div([
-        html.Label("เลือกมหาวิทยาลัยเพื่อเปรียบเทียบ (เลือกได้หลายแห่ง):"),
-        dcc.Dropdown(
-            id='university-dropdown',
-            multi=True,
-            placeholder="เลือกมหาวิทยาลัย"
-        )
-    ], style={"width": "600px", "margin": "auto", "marginBottom": "20px"}),
+                html.Div([
+                    html.Label("เลือกมหาวิทยาลัยเพื่อเปรียบเทียบ (เลือกได้หลายแห่ง):", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
+                    dcc.Dropdown(
+                        id='university-dropdown',
+                        multi=True,
+                        placeholder="เลือกมหาวิทยาลัย",
+                        style={"width": "500px", "borderRadius": "8px"}
+                    ),
+                ], style={"flex": "2", "minWidth": "300px"}),
+            ], style={
+                "display": "flex",
+                "justifyContent": "center",
+                "alignItems": "flex-start",
+                "marginBottom": "30px",
+                "flexWrap": "wrap",
+                "gap": "15px",
+                "padding": "0 20px"
+            }),
 
-    dcc.Graph(id="tuition-graph"),
+            dcc.Graph(id="tuition-graph", config={"displayModeBar": False}, style={"height": "700px"}),
 
-    # Pagination buttons ใต้กราฟ
-    html.Div(id='pagination-container', style={"textAlign": "center", "marginTop": "20px", "marginBottom": "40px"}),
+            html.Div(id='pagination-container', style={
+                "textAlign": "center",
+                "marginTop": "25px",
+                "marginBottom": "40px",
+                "display": "flex",
+                "justifyContent": "center",
+                "gap": "10px",
+                "flexWrap": "wrap",
+            }),
 
-    html.Div(
-        "หมายเหตุ: แสดงเฉพาะข้อมูลที่มีตัวเลขค่าใช้จ่ายระบุไว้ชัดเจน",
-        style={"textAlign": "center", "marginTop": "10px"}
-    )
+            html.Div(id="stats-container", style={
+                "textAlign": "center",
+                "fontSize": "16px",
+                "color": "#444",
+                "fontWeight": "600",
+                "marginBottom": "40px"
+            }),
+        ]),
+
+        dcc.Tab(label='ตารางข้อมูลค่าเทอม', value='tab-table', children=[
+            html.Div([
+                html.Label("เลือกประเภทค่าใช้จ่าย:", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
+                dcc.Dropdown(
+                    id='table-category-dropdown',
+                    options=[
+                        {"label": "ค่าเทอม (ต่อภาค)", "value": "ค่าเทอม"},
+                        {"label": "ค่าเรียนตลอดหลักสูตร", "value": "ค่าเรียนตลอดหลักสูตร"}
+                    ],
+                    value="ค่าเทอม",
+                    clearable=False,
+                    style={"width": "300px", "marginBottom": "15px", "borderRadius": "8px"}
+                ),
+
+                html.Label("เลือกมหาวิทยาลัย (หลายแห่งได้):", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
+                dcc.Dropdown(
+                    id='table-university-dropdown',
+                    multi=True,
+                    placeholder="เลือกมหาวิทยาลัย",
+                    style={"width": "600px", "marginBottom": "25px", "borderRadius": "8px"}
+                ),
+
+                dash_table.DataTable(
+                    id='tuition-table',
+                    columns=[{"name": i, "id": i} for i in df.columns],
+                    data=[],
+                    filter_action="native",
+                    sort_action="native",
+                    page_size=10,
+                    style_table={'overflowX': 'auto', 'maxWidth': '100%'},
+                    style_cell={
+                        'textAlign': 'left',
+                        'padding': '8px',
+                        'fontFamily': 'Kanit, sans-serif',
+                        'fontSize': '14px',
+                        'minWidth': '100px',
+                    },
+                    style_header={
+                        'backgroundColor': '#004080',
+                        'color': 'white',
+                        'fontWeight': '700',
+                        'fontSize': '15px',
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': '#f9f9f9',
+                        }
+                    ],
+                ),
+
+                html.Div(id="table-stats", style={"marginTop": "25px", "fontSize": "16px", "color": "#444", "fontWeight": "600"}),
+            ], style={"padding": "20px 40px"})
+        ])
+    ])
 ])
 
+
+# อัพเดตตัวเลือกมหาวิทยาลัย (กราฟ)
 @app.callback(
     Output("university-dropdown", "options"),
     Input("tuition-category-dropdown", "value")
@@ -74,9 +161,11 @@ def update_university_options(selected_category):
     return [{"label": u, "value": u} for u in sorted(universities)]
 
 
+# อัพเดตกราฟและปุ่ม pagination พร้อมสถิติ
 @app.callback(
     Output("tuition-graph", "figure"),
     Output("pagination-container", "children"),
+    Output("stats-container", "children"),
     Input("tuition-category-dropdown", "value"),
     Input("university-dropdown", "value"),
     Input({'type': 'page-button', 'index': ALL}, 'n_clicks'),
@@ -84,26 +173,20 @@ def update_university_options(selected_category):
 )
 def update_graph(selected_category, selected_universities, n_clicks_list, index_list):
     ctx = dash.callback_context
-
-    # กำหนดหน้าเริ่มต้นเป็น 1
     selected_page = 1
-
-    # ถ้ามีการกดปุ่มหน้า ให้เลือกหน้าที่กดล่าสุด
     if ctx.triggered and ctx.triggered[0]['prop_id'].split('.')[0].startswith("{"):
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
         import json
+        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
         triggered_prop = json.loads(triggered_id)
         selected_page = triggered_prop['index']
 
     filtered = df[df['Tuition Category'] == selected_category]
-
     if selected_universities:
         filtered = filtered[filtered['University'].isin(selected_universities)]
 
     univs = sorted(filtered['University'].dropna().unique())
     per_page = 5
 
-    # ถ้าเลือกมหาวิทยาลัยแบบเจาะจงและไม่ใช่ทั้งหมด ให้แสดงทั้งหมดเลยไม่แบ่งหน้า
     if selected_universities:
         filtered_page = filtered
     else:
@@ -115,37 +198,97 @@ def update_graph(selected_category, selected_universities, n_clicks_list, index_
     fig = px.bar(
         filtered_page,
         x="University",
-        y="Cleaned Tuition Fee",
+        y="Confirm Tution Fee",
         color="Program",
         barmode="group",
         hover_data=["Campus", "Program"],
         title=f"ค่า{'เทอม' if selected_category == 'ค่าเทอม' else 'เรียนตลอดหลักสูตร'}ของสาขาวิศวกรรมคอมพิวเตอร์และวิศวกรรมปัญญาประดิษฐ์",
-        labels={"Cleaned Tuition Fee": "ค่าใช้จ่าย (บาท)", "University": "มหาวิทยาลัย"},
+        labels={"Confirm Tution Fee": "ค่าใช้จ่าย (บาท)", "University": "มหาวิทยาลัย"},
     )
     fig.update_layout(xaxis_tickangle=-45, height=700)
 
-    # สร้างปุ่มเลขหน้า
     buttons = []
     total_pages = math.ceil(len(univs) / per_page)
+    max_page_display = 5
     max_pages = min(total_pages, max_page_display)
 
     for i in range(1, max_pages + 1):
         style = {
             "margin": "3px",
-            "padding": "8px 14px",
-            "fontWeight": "bold",
-            "border": "1px solid #0074D9",
-            "borderRadius": "4px",
+            "padding": "8px 16px",
+            "fontWeight": "600",
+            "border": "1.5px solid #0074D9",
+            "borderRadius": "6px",
             "cursor": "pointer",
             "backgroundColor": "#0074D9" if i == selected_page else "white",
             "color": "white" if i == selected_page else "#0074D9",
             "userSelect": "none",
+            "transition": "background-color 0.3s ease, color 0.3s ease",
         }
         buttons.append(
             html.Button(str(i), id={'type': 'page-button', 'index': i}, n_clicks=0, style=style)
         )
 
-    return fig, buttons
+    if len(filtered_page) > 0:
+        mean_fee = filtered_page['Confirm Tution Fee'].mean()
+        median_fee = filtered_page['Confirm Tution Fee'].median()
+        max_fee = filtered_page['Confirm Tution Fee'].max()
+        min_fee = filtered_page['Confirm Tution Fee'].min()
+        count_fee = filtered_page['Confirm Tution Fee'].count()
+        stats_text = (
+            f"ข้อมูล {count_fee} รายการ | "
+            f"เฉลี่ย: {mean_fee:,.0f} บาท | "
+            f"มัธยฐาน: {median_fee:,.0f} บาท | "
+            f"สูงสุด: {max_fee:,.0f} บาท | "
+            f"ต่ำสุด: {min_fee:,.0f} บาท"
+        )
+    else:
+        stats_text = "ไม่มีข้อมูลสำหรับการแสดงสถิติ"
+
+    return fig, buttons, stats_text
+
+
+# อัพเดตตัวเลือกมหาวิทยาลัย (ตาราง)
+@app.callback(
+    Output("table-university-dropdown", "options"),
+    Input("table-category-dropdown", "value")
+)
+def update_table_university_options(selected_category):
+    filtered = df[df['Tuition Category'] == selected_category]
+    universities = filtered['University'].dropna().unique()
+    return [{"label": u, "value": u} for u in sorted(universities)]
+
+
+# อัพเดตตารางและสถิติในแท็บตาราง
+@app.callback(
+    Output("tuition-table", "data"),
+    Output("table-stats", "children"),
+    Input("table-category-dropdown", "value"),
+    Input("table-university-dropdown", "value")
+)
+def update_table(selected_category, selected_universities):
+    filtered = df[df['Tuition Category'] == selected_category]
+    if selected_universities:
+        filtered = filtered[filtered['University'].isin(selected_universities)]
+    data = filtered.to_dict('records')
+
+    if len(filtered) > 0:
+        mean_fee = filtered['Confirm Tution Fee'].mean()
+        median_fee = filtered['Confirm Tution Fee'].median()
+        max_fee = filtered['Confirm Tution Fee'].max()
+        min_fee = filtered['Confirm Tution Fee'].min()
+        count_fee = filtered['Confirm Tution Fee'].count()
+        stats_text = (
+            f"ข้อมูล {count_fee} รายการ | "
+            f"เฉลี่ย: {mean_fee:,.0f} บาท | "
+            f"มัธยฐาน: {median_fee:,.0f} บาท | "
+            f"สูงสุด: {max_fee:,.0f} บาท | "
+            f"ต่ำสุด: {min_fee:,.0f} บาท"
+        )
+    else:
+        stats_text = "ไม่มีข้อมูลสำหรับการแสดงสถิติ"
+
+    return data, stats_text
 
 
 if __name__ == "__main__":
