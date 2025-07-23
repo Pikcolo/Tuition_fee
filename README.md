@@ -63,7 +63,36 @@ This project was created to explore tuition cost data for programs related to **
 - 📈 **Statistical Summary**:
   - Displays overall statistics for tuition costs across the selected programs.
 
+# Project Setup & Installation
 
+## 1. Clone the repository
+```
+git clone https://github.com/Pikcolo/Tuition_fee.git
+```
+## 2. Navigate into the project directory
+```
+cd Tuition_fee
+```
+## 3. Create a virtual environment and activate it
+
+### On Windows
+```
+python -m venv venv
+venv\Scripts\activate
+```
+### On macOS/Linux
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+## 4. Install required dependencies
+```
+pip install -r requirements.txt
+```
+## 5. Run the application
+```
+python app.py
+```
 
   
 
