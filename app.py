@@ -22,8 +22,8 @@ per_page = 5
 
 app.layout = html.Div([
     html.H1(
-        "📊 MyTCAS Dashboard: ค่าเล่าเรียนวิศวกรรมคอมพิวเตอร์และ AI",
-        style={
+        "📊 MyTCAS Dashboard: ค่าเล่าเรียนวิศวกรรมคอมพิวเตอร์และปัญญาประดิษฐ์",
+        style={ 
             "textAlign": "center",
             "fontFamily": "Kanit, sans-serif",
             "color": "#003366",
@@ -35,8 +35,8 @@ app.layout = html.Div([
     ),
 
     dcc.Tabs(id='tabs', value='tab-graph', children=[
+        # Tab 1: Graph
         dcc.Tab(label='กราฟเปรียบเทียบค่าเทอม', value='tab-graph', children=[
-            # ตัวกรอง dropdown
             html.Div([
                 html.Div([
                     html.Label("เลือกประเภทค่าใช้จ่าย:", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
@@ -48,7 +48,7 @@ app.layout = html.Div([
                         ],
                         value="ค่าเทอม",
                         clearable=False,
-                        style={"width": "280px", "borderRadius": "8px"}
+                        style={"width": "280px", "borderRadius": "8px", "marginTop": "5px"}
                     ),
                 ], style={"flex": "1", "minWidth": "280px", "marginRight": "20px"}),
 
@@ -58,7 +58,7 @@ app.layout = html.Div([
                         id='university-dropdown',
                         multi=True,
                         placeholder="เลือกมหาวิทยาลัย",
-                        style={"width": "500px", "borderRadius": "8px"}
+                        style={"width": "500px", "borderRadius": "8px", "marginTop": "5px"}
                     ),
                 ], style={"flex": "2", "minWidth": "300px"}),
             ], style={
@@ -92,6 +92,33 @@ app.layout = html.Div([
             }),
         ]),
 
+        # Tab 2: Pie Chart
+        dcc.Tab(label='จำนวนหลักสูตรที่เปิดสอน', value='tab-pie', children=[
+            html.Div([
+                dcc.Graph(
+                    id='program-count-pie',
+                    figure=px.pie(
+                        df.groupby('University')['Program'].nunique()
+                        .sort_values(ascending=False)
+                        .head(10)
+                        .reset_index(name='Program Count'),
+                        names='University',
+                        values='Program Count',
+                        title='Top 10 มหาวิทยาลัยที่เปิดหลักสูตรด้านวิศวกรรมคอมพิวเตอร์และปัญญาประดิษฐ์มากที่สุด',
+                    ).update_traces(
+                        textinfo='label+value',
+                        hovertemplate='%{label}<br>จำนวนหลักสูตรทั้งหมด: %{value} หลักสูตร',
+                        marker=dict(line=dict(color='#fff', width=1))
+                    ).update_layout(
+                        showlegend=True,
+                        margin={"t": 60, "b": 60, "l": 40, "r": 40},
+                        height=600
+                    )
+                )
+            ], style={"padding": "30px"})
+        ]),
+
+        # Tab 3: Table
         dcc.Tab(label='ตารางข้อมูลค่าเทอม', value='tab-table', children=[
             html.Div([
                 html.Label("เลือกประเภทค่าใช้จ่าย:", style={"fontWeight": "600", "fontSize": "16px", "marginBottom": "5px"}),
@@ -150,7 +177,7 @@ app.layout = html.Div([
 ])
 
 
-# อัพเดตตัวเลือกมหาวิทยาลัย (กราฟ)
+# ---------- Callbacks ----------
 @app.callback(
     Output("university-dropdown", "options"),
     Input("tuition-category-dropdown", "value")
@@ -161,7 +188,6 @@ def update_university_options(selected_category):
     return [{"label": u, "value": u} for u in sorted(universities)]
 
 
-# อัพเดตกราฟและปุ่ม pagination พร้อมสถิติ
 @app.callback(
     Output("tuition-graph", "figure"),
     Output("pagination-container", "children"),
@@ -185,8 +211,6 @@ def update_graph(selected_category, selected_universities, n_clicks_list, index_
         filtered = filtered[filtered['University'].isin(selected_universities)]
 
     univs = sorted(filtered['University'].dropna().unique())
-    per_page = 5
-
     if selected_universities:
         filtered_page = filtered
     else:
@@ -209,10 +233,7 @@ def update_graph(selected_category, selected_universities, n_clicks_list, index_
 
     buttons = []
     total_pages = math.ceil(len(univs) / per_page)
-    max_page_display = 5
-    max_pages = min(total_pages, max_page_display)
-
-    for i in range(1, max_pages + 1):
+    for i in range(1, min(total_pages, 5) + 1):
         style = {
             "margin": "3px",
             "padding": "8px 16px",
@@ -230,17 +251,12 @@ def update_graph(selected_category, selected_universities, n_clicks_list, index_
         )
 
     if len(filtered_page) > 0:
-        mean_fee = filtered_page['Confirm Tution Fee'].mean()
-        median_fee = filtered_page['Confirm Tution Fee'].median()
-        max_fee = filtered_page['Confirm Tution Fee'].max()
-        min_fee = filtered_page['Confirm Tution Fee'].min()
-        count_fee = filtered_page['Confirm Tution Fee'].count()
         stats_text = (
-            f"ข้อมูล {count_fee} รายการ | "
-            f"เฉลี่ย: {mean_fee:,.0f} บาท | "
-            f"มัธยฐาน: {median_fee:,.0f} บาท | "
-            f"สูงสุด: {max_fee:,.0f} บาท | "
-            f"ต่ำสุด: {min_fee:,.0f} บาท"
+            f"ข้อมูล {filtered_page['Confirm Tution Fee'].count()} รายการ | "
+            f"เฉลี่ย: {filtered_page['Confirm Tution Fee'].mean():,.0f} บาท | "
+            f"มัธยฐาน: {filtered_page['Confirm Tution Fee'].median():,.0f} บาท | "
+            f"สูงสุด: {filtered_page['Confirm Tution Fee'].max():,.0f} บาท | "
+            f"ต่ำสุด: {filtered_page['Confirm Tution Fee'].min():,.0f} บาท"
         )
     else:
         stats_text = "ไม่มีข้อมูลสำหรับการแสดงสถิติ"
@@ -248,7 +264,6 @@ def update_graph(selected_category, selected_universities, n_clicks_list, index_
     return fig, buttons, stats_text
 
 
-# อัพเดตตัวเลือกมหาวิทยาลัย (ตาราง)
 @app.callback(
     Output("table-university-dropdown", "options"),
     Input("table-category-dropdown", "value")
@@ -259,7 +274,6 @@ def update_table_university_options(selected_category):
     return [{"label": u, "value": u} for u in sorted(universities)]
 
 
-# อัพเดตตารางและสถิติในแท็บตาราง
 @app.callback(
     Output("tuition-table", "data"),
     Output("table-stats", "children"),
@@ -273,17 +287,12 @@ def update_table(selected_category, selected_universities):
     data = filtered.to_dict('records')
 
     if len(filtered) > 0:
-        mean_fee = filtered['Confirm Tution Fee'].mean()
-        median_fee = filtered['Confirm Tution Fee'].median()
-        max_fee = filtered['Confirm Tution Fee'].max()
-        min_fee = filtered['Confirm Tution Fee'].min()
-        count_fee = filtered['Confirm Tution Fee'].count()
         stats_text = (
-            f"ข้อมูล {count_fee} รายการ | "
-            f"เฉลี่ย: {mean_fee:,.0f} บาท | "
-            f"มัธยฐาน: {median_fee:,.0f} บาท | "
-            f"สูงสุด: {max_fee:,.0f} บาท | "
-            f"ต่ำสุด: {min_fee:,.0f} บาท"
+            f"ข้อมูล {filtered['Confirm Tution Fee'].count()} รายการ | "
+            f"เฉลี่ย: {filtered['Confirm Tution Fee'].mean():,.0f} บาท | "
+            f"มัธยฐาน: {filtered['Confirm Tution Fee'].median():,.0f} บาท | "
+            f"สูงสุด: {filtered['Confirm Tution Fee'].max():,.0f} บาท | "
+            f"ต่ำสุด: {filtered['Confirm Tution Fee'].min():,.0f} บาท"
         )
     else:
         stats_text = "ไม่มีข้อมูลสำหรับการแสดงสถิติ"
